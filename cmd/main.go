@@ -1,7 +1,8 @@
 package main
 
-import "fmt"
+import "github.com/MarcoVitoC/shortlr/internal"
 
 func main() {
-	fmt.Println("Welcome to 🔗Shortlr!")
+	server := internal.NewServer("localhost:8080")
+	server.Run()
 }
