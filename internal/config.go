@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/MarcoVitoC/shortlr/internal/repository"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 )
@@ -25,18 +26,22 @@ func (c *Config) Run() error {
 		log.Fatal("ERROR: failed to load .env file")
 	}
 
-	db, err := InitDB(os.Getenv("DATABASE_URL"))
+	conn, err := InitDB(os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatal("ERROR: failed to connect to database")
 	}
-	defer db.Close()
+	defer conn.Close()
 
-	redis := NewRedisClient(&redis.Options{
+	redisClient := NewRedisClient(&redis.Options{
 		Addr: "localhost:6379",
 		Password: "",
 	})
 
-	service := Service{conn: db, cache: redis}
+	repo := repository.New(conn)
+	service := Service{
+		repo: repo, 
+		cacheRepo: redisClient,
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /shortlr", service.Generate)

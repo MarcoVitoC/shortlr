@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/MarcoVitoC/shortlr/internal/repository"
 	"github.com/redis/go-redis/v9"
 )
 
 type Service struct {
-	conn *pgxpool.Pool
-	cache *redis.Client
+	repo *repository.Queries
+	cacheRepo *redis.Client
 }
 
 func (s *Service) Generate(w http.ResponseWriter, r *http.Request) {
