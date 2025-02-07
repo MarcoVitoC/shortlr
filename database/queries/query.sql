@@ -12,3 +12,7 @@ INSERT INTO shortlrs (
     $1, $2, $3, $4, $5
 )
 RETURNING short_url;
+
+-- name: DeleteShortlr :exec
+DELETE FROM shortlrs
+WHERE id = $1;

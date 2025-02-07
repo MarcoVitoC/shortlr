@@ -95,10 +95,20 @@ func generateShortlr(s *Service, payload repository.Shortlr) (string, error) {
 		CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
 		UpdatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
 	})
+
 	if err != nil {
-		log.Println("ERROR: ", err)
+		return "", errors.New(err.Error())
+	}
+	
+	expiration := time.Hour * 24 * 365
+	if err := s.cacheRepo.Set(context.Background(), newShortlr, payload.LongUrl, expiration); err != nil {
+		return "", errors.New(err.Err().Error())
 	}
 
 	log.Printf("INFO: successfully generate new shortlr: %s", shortlr)
 	return shortlr, nil
+}
+
+func (s *Service) Delete(w http.ResponseWriter, r *http.Request) {
+	//
 }
