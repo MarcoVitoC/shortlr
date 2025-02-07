@@ -8,45 +8,9 @@ package repository
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
-
-const generateShortlr = `-- name: GenerateShortlr :one
-INSERT INTO shortlrs (
-    id, long_url, short_url, created_at, updated_at
-) VALUES (
-    $1, $2, $3, $4, $5
-)
-RETURNING id, long_url, short_url, access_count, created_at, updated_at
-`
-
-type GenerateShortlrParams struct {
-	ID        pgtype.UUID
-	LongUrl   string
-	ShortUrl  string
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
-}
-
-func (q *Queries) GenerateShortlr(ctx context.Context, arg GenerateShortlrParams) (Shortlr, error) {
-	row := q.db.QueryRow(ctx, generateShortlr,
-		arg.ID,
-		arg.LongUrl,
-		arg.ShortUrl,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	var i Shortlr
-	err := row.Scan(
-		&i.ID,
-		&i.LongUrl,
-		&i.ShortUrl,
-		&i.AccessCount,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
 
 const getAllShortlr = `-- name: GetAllShortlr :many
 SELECT id, long_url, short_url, access_count, created_at, updated_at FROM shortlrs
@@ -80,20 +44,43 @@ func (q *Queries) GetAllShortlr(ctx context.Context) ([]Shortlr, error) {
 }
 
 const getByLongUrl = `-- name: GetByLongUrl :one
-SELECT id, long_url, short_url, access_count, created_at, updated_at FROM shortlrs
+SELECT short_url FROM shortlrs
 WHERE long_url = $1
 `
 
-func (q *Queries) GetByLongUrl(ctx context.Context, longUrl string) (Shortlr, error) {
+func (q *Queries) GetByLongUrl(ctx context.Context, longUrl string) (string, error) {
 	row := q.db.QueryRow(ctx, getByLongUrl, longUrl)
-	var i Shortlr
-	err := row.Scan(
-		&i.ID,
-		&i.LongUrl,
-		&i.ShortUrl,
-		&i.AccessCount,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+	var short_url string
+	err := row.Scan(&short_url)
+	return short_url, err
+}
+
+const saveShortlr = `-- name: SaveShortlr :one
+INSERT INTO shortlrs (
+    id, long_url, short_url, created_at, updated_at
+) VALUES (
+    $1, $2, $3, $4, $5
+)
+RETURNING short_url
+`
+
+type SaveShortlrParams struct {
+	ID        uuid.UUID        `json:"id"`
+	LongUrl   string           `json:"long_url"`
+	ShortUrl  string           `json:"short_url"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) SaveShortlr(ctx context.Context, arg SaveShortlrParams) (string, error) {
+	row := q.db.QueryRow(ctx, saveShortlr,
+		arg.ID,
+		arg.LongUrl,
+		arg.ShortUrl,
+		arg.CreatedAt,
+		arg.UpdatedAt,
 	)
-	return i, err
+	var short_url string
+	err := row.Scan(&short_url)
+	return short_url, err
 }

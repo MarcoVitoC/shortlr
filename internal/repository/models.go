@@ -5,14 +5,15 @@
 package repository
 
 import (
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Shortlr struct {
-	ID          pgtype.UUID
-	LongUrl     string
-	ShortUrl    string
-	AccessCount pgtype.Int8
-	CreatedAt   pgtype.Timestamp
-	UpdatedAt   pgtype.Timestamp
+	ID          uuid.UUID        `json:"id"`
+	LongUrl     string           `json:"long_url"`
+	ShortUrl    string           `json:"short_url"`
+	AccessCount pgtype.Int8      `json:"access_count"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 }

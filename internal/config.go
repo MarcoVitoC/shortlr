@@ -44,6 +44,7 @@ func (c *Config) Run() error {
 	}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /shortlr", service.GetAll)
 	mux.HandleFunc("POST /shortlr", service.Generate)
 
 	server := http.Server{

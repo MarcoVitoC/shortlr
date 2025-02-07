@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS "shortlrs"(
     "long_url" VARCHAR(255) NOT NULL,
     "short_url" VARCHAR(255) NOT NULL,
     "access_count" BIGINT DEFAULT 0,
-    "created_at" TIMESTAMP,
-    "updated_at" TIMESTAMP
+    "created_at" TIMESTAMP NOT NULL,
+    "updated_at" TIMESTAMP NOT NULL
 );
 COMMIT;
