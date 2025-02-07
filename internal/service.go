@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/MarcoVitoC/shortlr/internal/repository"
@@ -40,6 +41,23 @@ func (s *Service) GetAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Service) Redirect(w http.ResponseWriter, r *http.Request) {
+	urlPrefix := "https://"
+
+	key := r.PathValue("shortlr")
+	url, err := s.cacheRepo.Get(context.Background(), key).Result()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !strings.HasPrefix(url, urlPrefix) {
+		url = urlPrefix + url
+	}
+	
+	http.Redirect(w, r, url, http.StatusFound)
 }
 
 func (s *Service) Generate(w http.ResponseWriter, r *http.Request) {
@@ -81,8 +99,7 @@ func generateShortlr(s *Service, payload repository.Shortlr) (string, error) {
 		return "", errors.New("ERROR: URL cannot be empty")
 	}
 
-	random := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	newShortlr := "short.lr/"
+	random, newShortlr := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", ""
 	for i:=0; i<9; i++ {
 		k, _ := rand.Int(rand.Reader, big.NewInt(12))
 		newShortlr += string(random[k.Int64()])
