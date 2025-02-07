@@ -133,10 +133,12 @@ func (s *Service) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.repo.DeleteShortlr(context.Background(), id); err != nil {
+	shortlr, err := s.repo.DeleteShortlr(context.Background(), id)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	s.cacheRepo.Del(context.Background(), shortlr)
 	w.WriteHeader(http.StatusOK)
 }

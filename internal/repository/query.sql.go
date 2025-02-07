@@ -12,14 +12,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const deleteShortlr = `-- name: DeleteShortlr :exec
+const deleteShortlr = `-- name: DeleteShortlr :one
 DELETE FROM shortlrs
 WHERE id = $1
+RETURNING short_url
 `
 
-func (q *Queries) DeleteShortlr(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteShortlr, id)
-	return err
+func (q *Queries) DeleteShortlr(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, deleteShortlr, id)
+	var short_url string
+	err := row.Scan(&short_url)
+	return short_url, err
 }
 
 const getAllShortlr = `-- name: GetAllShortlr :many

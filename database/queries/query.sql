@@ -13,6 +13,7 @@ INSERT INTO shortlrs (
 )
 RETURNING short_url;
 
--- name: DeleteShortlr :exec
+-- name: DeleteShortlr :one
 DELETE FROM shortlrs
-WHERE id = $1;
+WHERE id = $1
+RETURNING short_url;
