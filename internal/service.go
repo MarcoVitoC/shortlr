@@ -99,7 +99,7 @@ func generateShortlr(s *Service, payload repository.Shortlr) (string, error) {
 	if err != nil {
 		return "", errors.New(err.Error())
 	}
-	
+
 	expiration := time.Hour * 24 * 365
 	if err := s.cacheRepo.Set(context.Background(), newShortlr, payload.LongUrl, expiration); err != nil {
 		return "", errors.New(err.Err().Error())
@@ -110,5 +110,16 @@ func generateShortlr(s *Service, payload repository.Shortlr) (string, error) {
 }
 
 func (s *Service) Delete(w http.ResponseWriter, r *http.Request) {
-	//
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := s.repo.DeleteShortlr(context.Background(), id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
