@@ -47,6 +47,7 @@ func (c *Config) Run() error {
 	mux.HandleFunc("GET /shortlr", service.GetAll)
 	mux.HandleFunc("GET /{shortlr}", service.Redirect)
 	mux.HandleFunc("POST /shortlr", service.Generate)
+	mux.HandleFunc("PUT /shortlr/{id}", service.Update)
 	mux.HandleFunc("DELETE /shortlr/{id}", service.Delete)
 
 	server := http.Server{

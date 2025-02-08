@@ -56,15 +56,18 @@ func (s *Service) Redirect(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(url, urlPrefix) {
 		url = urlPrefix + url
 	}
+
+	if err := s.repo.IncrementAccessCount(context.Background(), key); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	
 	http.Redirect(w, r, url, http.StatusFound)
 }
 
 func (s *Service) Generate(w http.ResponseWriter, r *http.Request) {
 	var payload repository.Shortlr
-
-	err := json.NewDecoder(r.Body).Decode(&payload)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -118,12 +121,46 @@ func generateShortlr(s *Service, payload repository.Shortlr) (string, error) {
 	}
 
 	expiration := time.Hour * 24 * 365
-	if err := s.cacheRepo.Set(context.Background(), newShortlr, payload.LongUrl, expiration); err != nil {
-		return "", errors.New(err.Err().Error())
-	}
+	s.cacheRepo.Set(context.Background(), newShortlr, payload.LongUrl, expiration)
 
 	log.Printf("INFO: successfully generate new shortlr: %s", shortlr)
 	return shortlr, nil
+}
+
+func (s *Service) Update(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var payload repository.Shortlr
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	shortlr, _ := s.repo.GetByLongUrl(context.Background(), payload.LongUrl)
+	if shortlr != "" {
+		http.Error(w, "URL already exists!", http.StatusConflict)
+		return
+	}
+
+	updatedShortlr, err := s.repo.UpdateShortlr(context.Background(), repository.UpdateShortlrParams{
+		LongUrl: payload.LongUrl,
+		UpdatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
+		ID: id,
+	})
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+
+	expiration := time.Hour * 24 * 365
+	s.cacheRepo.Set(context.Background(), updatedShortlr, payload.LongUrl, expiration)
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *Service) Delete(w http.ResponseWriter, r *http.Request) {

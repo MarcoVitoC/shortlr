@@ -68,6 +68,17 @@ func (q *Queries) GetByLongUrl(ctx context.Context, longUrl string) (string, err
 	return short_url, err
 }
 
+const incrementAccessCount = `-- name: IncrementAccessCount :exec
+UPDATE shortlrs
+SET access_count = access_count + 1
+WHERE short_url = $1
+`
+
+func (q *Queries) IncrementAccessCount(ctx context.Context, shortUrl string) error {
+	_, err := q.db.Exec(ctx, incrementAccessCount, shortUrl)
+	return err
+}
+
 const saveShortlr = `-- name: SaveShortlr :one
 INSERT INTO shortlrs (
     id, long_url, short_url, created_at, updated_at
@@ -93,6 +104,26 @@ func (q *Queries) SaveShortlr(ctx context.Context, arg SaveShortlrParams) (strin
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
+	var short_url string
+	err := row.Scan(&short_url)
+	return short_url, err
+}
+
+const updateShortlr = `-- name: UpdateShortlr :one
+UPDATE shortlrs
+SET long_url = $1, updated_at = $2
+WHERE id = $3
+RETURNING short_url
+`
+
+type UpdateShortlrParams struct {
+	LongUrl   string           `json:"long_url"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	ID        uuid.UUID        `json:"id"`
+}
+
+func (q *Queries) UpdateShortlr(ctx context.Context, arg UpdateShortlrParams) (string, error) {
+	row := q.db.QueryRow(ctx, updateShortlr, arg.LongUrl, arg.UpdatedAt, arg.ID)
 	var short_url string
 	err := row.Scan(&short_url)
 	return short_url, err

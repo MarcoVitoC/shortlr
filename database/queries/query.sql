@@ -13,6 +13,17 @@ INSERT INTO shortlrs (
 )
 RETURNING short_url;
 
+-- name: UpdateShortlr :one
+UPDATE shortlrs
+SET long_url = $1, updated_at = $2
+WHERE id = $3
+RETURNING short_url;
+
+-- name: IncrementAccessCount :exec
+UPDATE shortlrs
+SET access_count = access_count + 1
+WHERE short_url = $1;
+
 -- name: DeleteShortlr :one
 DELETE FROM shortlrs
 WHERE id = $1
