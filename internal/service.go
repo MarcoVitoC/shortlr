@@ -23,24 +23,13 @@ type Service struct {
 }
 
 func (s *Service) GetAll(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	data, err := s.repo.GetAllShortlr(context.Background())
+	code := http.StatusOK
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		code = http.StatusInternalServerError
 	}
 
-	if data == nil {
-		data = []repository.Shortlr{}
-	}
-
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
+	WriteJSONResponse(w, code, "OK", data, err)
 }
 
 func (s *Service) Redirect(w http.ResponseWriter, r *http.Request) {
@@ -72,29 +61,19 @@ func (s *Service) Generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortlr, _ := s.repo.GetByLongUrl(context.Background(), payload.LongUrl)
+	shortlr, err := s.repo.GetByLongUrl(context.Background(), payload.LongUrl)
 	if shortlr != "" {
-		if err := json.NewEncoder(w).Encode(shortlr); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
+		WriteJSONResponse(w, http.StatusOK, "OK", shortlr, err)
 		return
 	}
 
+	code := http.StatusOK
 	newShortlr, err := generateShortlr(s, payload)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		code = http.StatusBadRequest
 	}
 
-	if err := json.NewEncoder(w).Encode(newShortlr); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
+	WriteJSONResponse(w, code, "OK", newShortlr, err)
 }
 
 func generateShortlr(s *Service, payload repository.Shortlr) (string, error) {
@@ -130,7 +109,7 @@ func generateShortlr(s *Service, payload repository.Shortlr) (string, error) {
 func (s *Service) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		WriteJSONResponse(w, http.StatusBadRequest, "ID is invalid!", nil, err)
 		return
 	}
 
@@ -140,9 +119,9 @@ func (s *Service) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortlr, _ := s.repo.GetByLongUrl(context.Background(), payload.LongUrl)
+	shortlr, err := s.repo.GetByLongUrl(context.Background(), payload.LongUrl)
 	if shortlr != "" {
-		http.Error(w, "URL already exists!", http.StatusConflict)
+		WriteJSONResponse(w, http.StatusConflict, "URL already exists!", shortlr, err)
 		return
 	}
 
@@ -152,30 +131,33 @@ func (s *Service) Update(w http.ResponseWriter, r *http.Request) {
 		ID: id,
 	})
 
+	code := http.StatusOK
+	status := "OK"
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusConflict)
-		return
+		code = http.StatusConflict
+		status = "Oops, something went wrong!"
 	}
 
 	expiration := time.Hour * 24 * 365
 	s.cacheRepo.Set(context.Background(), updatedShortlr, payload.LongUrl, expiration)
-
-	w.WriteHeader(http.StatusOK)
+	WriteJSONResponse(w, code, status, updatedShortlr, err)
 }
 
 func (s *Service) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		WriteJSONResponse(w, http.StatusBadRequest, "ID is invalid!", nil, err)
 		return
 	}
 
+	code := http.StatusOK
+	status := "OK"
 	shortlr, err := s.repo.DeleteShortlr(context.Background(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		code = http.StatusInternalServerError
+		status = "Oops, something went wrong!"
 	}
 
 	s.cacheRepo.Del(context.Background(), shortlr)
-	w.WriteHeader(http.StatusOK)
+	WriteJSONResponse(w, code, status, nil, err)
 }
