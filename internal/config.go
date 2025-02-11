@@ -4,11 +4,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/MarcoVitoC/shortlr/internal/repository"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 )
+
+var QueryTimeoutDuration = time.Second * 5
 
 type Config struct {
 	port string

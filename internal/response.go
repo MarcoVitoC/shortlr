@@ -31,3 +31,7 @@ func WriteJSONResponse(w http.ResponseWriter, code int, status string, data inte
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(response)
 }
+
+func WriteOKResponse(w http.ResponseWriter, data interface{}) {
+	WriteJSONResponse(w, http.StatusOK, "OK", data, nil)
+}
