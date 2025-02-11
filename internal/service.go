@@ -3,7 +3,6 @@ package internal
 import (
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"errors"
 	"log"
 	"math/big"
@@ -15,6 +14,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/redis/go-redis/v9"
+)
+
+const (
+	length 	= 9
+	charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
 type Service struct {
@@ -32,7 +36,7 @@ func (s *Service) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteOKResponse(w, data)
+	WriteOK(w, data)
 }
 
 func (s *Service) Redirect(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +66,7 @@ func (s *Service) Redirect(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) Generate(w http.ResponseWriter, r *http.Request) {
 	var payload repository.Shortlr
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+	if err := ReadJson(w, r, &payload); err != nil {
 		WriteBadRequestResponse(w, err)
 		return
 	}
@@ -72,7 +76,7 @@ func (s *Service) Generate(w http.ResponseWriter, r *http.Request) {
 
 	shortlr, _ := s.repo.GetByLongUrl(ctx, payload.LongUrl)
 	if shortlr != "" {
-		WriteOKResponse(w, shortlr)
+		WriteConflictResponse(w, "The long URL has been generated before.", nil)
 		return
 	}
 
@@ -82,20 +86,27 @@ func (s *Service) Generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteOKResponse(w, newShortlr)
+	WriteOK(w, newShortlr)
 }
 
 func generateShortlr(ctx context.Context, s *Service, payload repository.Shortlr) (string, error) {
 	if payload.LongUrl == "" {
-		return "", errors.New("ERROR: URL cannot be empty")
+		return "", errors.New("URL cannot be empty")
 	}
 
-	random, newShortlr := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", ""
-	for i:=0; i<9; i++ {
-		k, _ := rand.Int(rand.Reader, big.NewInt(12))
-		newShortlr += string(random[k.Int64()])
+	var newShortlr strings.Builder
+	newShortlr.Grow(length)
+
+	charsetLength := len(charset)
+	for i:=0; i<length; i++ {
+		k, _ := rand.Int(rand.Reader, big.NewInt(int64(charsetLength)))
+		newShortlr.WriteByte(charset[k.Int64()])
 	}
 
+	return saveShortlr(ctx, s, payload, newShortlr.String())
+}
+
+func saveShortlr(ctx context.Context, s *Service, payload repository.Shortlr, newShortlr string) (string, error) {
 	shortlr, err := s.repo.SaveShortlr(ctx, repository.SaveShortlrParams{
 		ID: uuid.New(),
 		LongUrl: payload.LongUrl,
@@ -123,7 +134,7 @@ func (s *Service) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var payload repository.Shortlr
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+	if err := ReadJson(w, r, &payload); err != nil {
 		WriteBadRequestResponse(w, err)
 		return
 	}
@@ -133,7 +144,7 @@ func (s *Service) Update(w http.ResponseWriter, r *http.Request) {
 
 	shortlr, err := s.repo.GetByLongUrl(ctx, payload.LongUrl)
 	if shortlr != "" {
-		WriteConflictResponse(w, err)
+		WriteConflictResponse(w, "The long URL has been generated before.", err)
 		return
 	}
 
@@ -144,13 +155,13 @@ func (s *Service) Update(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		WriteConflictResponse(w, err)
+		WriteNotFoundResponse(w, err)
 		return
 	}
 
 	expiration := time.Hour * 24 * 365
 	s.cacheRepo.Set(ctx, updatedShortlr, payload.LongUrl, expiration)
-	WriteOKResponse(w, updatedShortlr)
+	WriteOK(w, true)
 }
 
 func (s *Service) Delete(w http.ResponseWriter, r *http.Request) {
@@ -170,5 +181,5 @@ func (s *Service) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.cacheRepo.Del(ctx, shortlr)
-	WriteOKResponse(w, true)
+	WriteOK(w, true)
 }

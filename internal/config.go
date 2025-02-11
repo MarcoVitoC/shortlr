@@ -11,7 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var QueryTimeoutDuration = time.Second * 5
+const QueryTimeoutDuration = time.Second * 5
 
 type Config struct {
 	port string
